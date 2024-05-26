@@ -45,7 +45,5 @@ This Python script scrapes dentist information from the Royal College of Dental 
 - The script uses Chrome WebDriver for browser automation. Make sure you have Chrome browser installed on your system.
 - The script handles pagination by scrolling to the bottom of the page and clicking the "Next" button if available. It will continue scraping until the specified limit is reached or there are no more results to load.
 
-### Disclaimer
-Please note that web scraping may be subject to legal restrictions and the terms of service of the target website. Make sure to review and comply with the RCDSO's terms of service and any applicable laws before using this script.
 ### License
 This project is open-source and available under the MIT License.
