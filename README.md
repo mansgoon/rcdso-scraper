@@ -37,7 +37,7 @@ This Python script scrapes dentist information from the Royal College of Dental 
 ```python scraper.py```
 
 3. The script will start scraping dentist information from the specified URL. It will display the progress and any errors encountered during the process.
-4. Once the scraping is complete, the results will be saved to an Excel file named dentists_in_oakville.xlsx in the same directory.
+4. Once the scraping is complete, the results will be saved to an Excel file named dentists_in_FILENAME.xlsx in the same directory.
 
 ### Notes
 
