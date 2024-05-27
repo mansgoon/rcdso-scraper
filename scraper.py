@@ -17,7 +17,7 @@ def setup_driver():
     return driver
 
 # Define the base URL for scraping
-base_url = "https://www.rcdso.org/find-a-dentist/search-results?Alpha=&City=Oakville&MbrSpecialty=&ConstitID=&AlphaParent=&Address1=&PhoneNum=&SedationType=&SedationProviderType=&GroupCode=&DetailsCode="
+base_url = "https://www.rcdso.org/find-a-dentist/search-results?Alpha=&City=Mississauga&MbrSpecialty=&ConstitID=&AlphaParent=&Address1=&PhoneNum=&SedationType=&SedationProviderType=&GroupCode=&DetailsCode="
 
 def scrape_current_page(driver, dentists, limit):
     items = driver.find_elements(By.CSS_SELECTOR, 'div#dentistSearchResults .row')
@@ -61,9 +61,9 @@ def scrape_current_page(driver, dentists, limit):
                 # If no specialty is found, add the dentist to the list
                 try:
                     zip_code = driver.find_element(By.XPATH, '//address//span[last()]').text.strip()
-                    city = f"Oakville ON {zip_code}"
+                    city = f"Mississauga ON {zip_code}"
                 except Exception as zip_e:
-                    city = "Oakville"
+                    city = "Mississauga"
 
                 dentists.append({
                     'Name': name,
@@ -155,9 +155,19 @@ def get_dentists(url, limit=50, reverse=False):
     driver.quit()
     return dentists
 
+def remove_duplicates(dentists):
+    unique_dentists = []
+    seen = set()
+    for dentist in dentists:
+        dentist_tuple = tuple(dentist.items())
+        if dentist_tuple not in seen:
+            seen.add(dentist_tuple)
+            unique_dentists.append(dentist)
+    return unique_dentists
+
 def main():
     test_url = base_url
-    test_limit = 172
+    test_limit = 510
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         future1 = executor.submit(get_dentists, test_url, test_limit, False)
@@ -167,11 +177,11 @@ def main():
     dentists2 = future2.result()
 
     # Combine results and remove duplicates
-    all_dentists = [dict(t) for t in set(tuple(d.items()) for d in dentists1 + dentists2)]
+    all_dentists = remove_duplicates(dentists1 + dentists2)
 
     # Save the results to an Excel file
     df = pd.DataFrame(all_dentists)
-    excel_file_path = 'dentists_in_oakville2.xlsx'
+    excel_file_path = 'dentists_in_mississauga2.xlsx'
     df.to_excel(excel_file_path, index=False)
     print(f"Data saved to {excel_file_path}")
 
