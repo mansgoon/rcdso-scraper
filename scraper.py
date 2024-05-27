@@ -8,12 +8,13 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from webdriver_manager.chrome import ChromeDriverManager
 
+# Setup Selenium WebDriver
 options = Options()
 # options.headless = False  # Disable headless mode to see browser actions
-options.add_argument('--ignore-certificate-errors')
+options.add_argument('--ignore-certificate-errors')  # Ignore SSL certificate errors
 driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 
-# define the base URL for scraping
+# Define the base URL for scraping
 base_url = "https://www.rcdso.org/find-a-dentist/search-results?Alpha=&City=Oakville&MbrSpecialty=&ConstitID=&AlphaParent=&Address1=&PhoneNum=&SedationType=&SedationProviderType=&GroupCode=&DetailsCode="
 
 def scrape_current_page(dentists, limit):
@@ -25,7 +26,7 @@ def scrape_current_page(dentists, limit):
         print("No visible dentist search results found.")
         return False
 
-    for item in visible_items[:10]:  # process 10 results at a time
+    for item in visible_items[:10]:  # Process 10 results at a time
         if len(dentists) >= limit:
             return False
 
@@ -40,15 +41,42 @@ def scrape_current_page(dentists, limit):
                 business_name = ''
                 address = ''
 
-            dentists.append({
-                'Name': name,
-                'Business Name': business_name,
-                'Address': address,
-                'City': 'Brampton'
-            })
+            # Click on the name to go to the details page
+            name_link = item.find_element(By.CSS_SELECTOR, 'h2 a')
+            driver.execute_script("arguments[0].scrollIntoView();", name_link)
+            time.sleep(1)
+            try:
+                name_link.click()
+            except Exception as e:
+                print(f"Click intercepted, retrying: {e}")
+                driver.execute_script("arguments[0].click();", name_link)
+            
+            time.sleep(2)  # Ensure the details page has loaded
 
-            # change city accordingly to the city you are scraping
-            print(f"Found dentist: {name}, {business_name}, {address}, Brampton")
+            # Check for the specialty
+            try:
+                specialty = driver.find_element(By.XPATH, '//dt[text()="Specialty:"]/following-sibling::dd').text.strip()
+                print(f"Specialty found for dentist: {name}, skipping...")
+            except Exception as e:
+                # If no specialty is found, add the dentist to the list
+                try:
+                    zip_code = driver.find_element(By.XPATH, '//address//span[last()]').text.strip()
+                    city = f"Mississauga ON {zip_code}"
+                except Exception as zip_e:
+                    city = "Mississauga"
+
+                dentists.append({
+                    'Name': name,
+                    'Business Name': business_name,
+                    'Address': address,
+                    'City': city
+                })
+                print(f"Found dentist: {name}, {business_name}, {address}, {city}")
+
+            # Go back to the previous page
+            driver.back()
+            WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div#dentistSearchResults .row')))
+            time.sleep(2)  # Ensure the previous page has loaded
 
         except Exception as e:
             print(f"Error parsing dentist entry: {e}")
@@ -62,25 +90,27 @@ def get_dentists(url, limit=50):
     print(f"Fetching data from URL: {url}")
     driver.get(url)
     WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div#dentistSearchResults .row')))
-    time.sleep(2)
+    time.sleep(2)  # Ensure page has loaded
 
     while len(dentists) < limit:
         if not scrape_current_page(dentists, limit):
             break
 
+        # Scroll to the bottom of the page to ensure the "Next" button is in view
         print("Scrolling to the bottom of the page")
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
-        time.sleep(1) 
+        time.sleep(1)  # Ensure the page scroll completes and wait a bit longer
 
-        # check if there's a "Next" button to load more results
+        # Check if there's a "Next" button to load more results
         try:
             next_button = WebDriverWait(driver, 10).until(
                 EC.element_to_be_clickable((By.XPATH, '//a[@class="page-link next"]'))
             )
             print("Next button found. Clicking to reveal more results.")
             next_button.click()
+            time.sleep(3)  # Ensure the next set of results is revealed
 
-            # wait for the new set of results to be visible
+            # Wait for the new set of results to be visible
             WebDriverWait(driver, 10).until(
                 EC.presence_of_element_located((By.CSS_SELECTOR, 'div#dentistSearchResults .row'))
             )
@@ -91,14 +121,16 @@ def get_dentists(url, limit=50):
 
     return dentists
 
+# Test the function with a limit
 test_url = base_url
-test_limit = 1100
+test_limit = 50
 test_dentists = get_dentists(test_url, test_limit)
 
-# save the results to an excel file
-df = pd.DataFrame(test_dentists)
-excel_file_path = 'dentists_in_oakville.xlsx'
-df.to_excel(excel_file_path, index=False)
-print(f"Data saved to {excel_file_path}")
+# Save the results to an Excel file
+# df = pd.DataFrame(test_dentists)
+# excel_file_path = 'dentists_in_oakville.xlsx'
+# df.to_excel(excel_file_path, index=False)
+# print(f"Data saved to {excel_file_path}")
 
+# Close the WebDriver
 driver.quit()
