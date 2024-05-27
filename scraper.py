@@ -17,7 +17,7 @@ def setup_driver():
     return driver
 
 # Define the base URL for scraping
-base_url = "https://www.rcdso.org/find-a-dentist/search-results?Alpha=&City=Mississauga&MbrSpecialty=&ConstitID=&AlphaParent=&Address1=&PhoneNum=&SedationType=&SedationProviderType=&GroupCode=&DetailsCode="
+base_url = "https://www.rcdso.org/find-a-dentist/search-results?Alpha=&City=etobicoke&MbrSpecialty=&ConstitID=&AlphaParent=&Address1=&PhoneNum=&SedationType=&SedationProviderType=&GroupCode=&DetailsCode="
 
 def scrape_current_page(driver, dentists, limit):
     items = driver.find_elements(By.CSS_SELECTOR, 'div#dentistSearchResults .row')
@@ -34,14 +34,6 @@ def scrape_current_page(driver, dentists, limit):
 
         try:
             name = item.find_element(By.CSS_SELECTOR, 'h2').text.strip()
-            address_tag = item.find_element(By.CSS_SELECTOR, 'address')
-            spans = address_tag.find_elements(By.TAG_NAME, 'span')
-            if len(spans) >= 2:
-                business_name = spans[0].text.strip()
-                address = spans[1].text.strip()
-            else:
-                business_name = ''
-                address = ''
 
             # Click on the name to go to the details page
             name_link = item.find_element(By.CSS_SELECTOR, 'h2 a')
@@ -57,21 +49,49 @@ def scrape_current_page(driver, dentists, limit):
             try:
                 specialty = driver.find_element(By.XPATH, '//dt[text()="Specialty:"]/following-sibling::dd').text.strip()
                 print(f"Specialty found for dentist: {name}, skipping...")
+                driver.back()
+                WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div#dentistSearchResults .row')))
+                time.sleep(1)  # Ensure the previous page has loaded
+                continue
             except Exception:
-                # If no specialty is found, add the dentist to the list
-                try:
-                    zip_code = driver.find_element(By.XPATH, '//address//span[last()]').text.strip()
-                    city = f"Mississauga ON {zip_code}"
-                except Exception as zip_e:
-                    city = "Mississauga"
+                pass
 
-                dentists.append({
-                    'Name': name,
-                    'Business Name': business_name,
-                    'Address': address,
-                    'City': city
-                })
-                print(f"Found dentist: {name}, {business_name}, {address}, {city}")
+            # Check for the "Primary Practice" section
+            try:
+                driver.find_element(By.XPATH, '//h3[text()="Primary Practice"]')
+            except Exception as e:
+                print(f"No Primary Practice section for dentist: {name}, skipping...")
+                driver.back()
+                WebDriverWait(driver, 10).until(EC.presence_of_element_located((By.CSS_SELECTOR, 'div#dentistSearchResults .row')))
+                time.sleep(1)  # Ensure the previous page has loaded
+                continue
+
+            # Extract details
+            try:
+                business_name = driver.find_element(By.XPATH, '//h3[text()="Primary Practice"]/following-sibling::h4').text.strip()
+                address_tag = driver.find_element(By.CSS_SELECTOR, 'address')
+                spans = address_tag.find_elements(By.TAG_NAME, 'span')
+                if len(spans) >= 3:
+                    address = spans[0].text.strip()
+                    zip_code = spans[2].text.strip()
+                    city = f"Etobicoke ON {zip_code}"
+                else:
+                    address = ''
+                    zip_code = ''
+                    city = ''
+            except Exception as e:
+                print(f"Error extracting details: {e}")
+                business_name = ''
+                address = ''
+                city = ''
+
+            dentists.append({
+                'Name': name,
+                'Business Name': business_name,
+                'Address': address,
+                'City': city
+            })
+            print(f"Found dentist: {name}, {business_name}, {address}, {city}")
 
             # Go back to the previous page
             driver.back()
@@ -167,7 +187,7 @@ def remove_duplicates(dentists):
 
 def main():
     test_url = base_url
-    test_limit = 510
+    test_limit = 140
 
     with ThreadPoolExecutor(max_workers=2) as executor:
         future1 = executor.submit(get_dentists, test_url, test_limit, False)
@@ -181,7 +201,7 @@ def main():
 
     # Save the results to an Excel file
     df = pd.DataFrame(all_dentists)
-    excel_file_path = 'dentists_in_mississauga2.xlsx'
+    excel_file_path = 'dentists_in_etobicoke2.xlsx'
     df.to_excel(excel_file_path, index=False)
     print(f"Data saved to {excel_file_path}")
 
