@@ -2,6 +2,12 @@
 
 This Python application scrapes dentist information from the Royal College of Dental Surgeons of Ontario (RCDSO) website. It uses Selenium with Chrome WebDriver to automate the browsing and extraction of data, and provides a graphical user interface (GUI) for easy interaction.
 
+
+<p align="center" width="100%">
+  <img width="40%" src="https://github.com/user-attachments/assets/6d4bd810-3a7c-4ead-8452-3376b4691122" />
+</p>
+
+
 ## Features
 
 - Scrapes dentist information including name, business name, address, and city
